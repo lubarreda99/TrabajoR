@@ -1,0 +1,123 @@
+---
+title: "Proyecto Business perfomance analysis"
+date: "`r Sys.Date()`"
+author: Luis Barreda Gamero
+output:
+  rmdformats::readthedown:
+    highlight: haddock
+    self_contained: true
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(dygraphs)
+library(plotly)
+library(rmdformats)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## ANÁLISIS PAGINAS CON EXPRESIONES REGULARES
+
+Para el siguiente análisis se utilizaron las siguientes páginas , ambas considerando el apartado de de **"Expresiones Regulares"**:
+
+_[1] [**rpubs.com**](<http://rpubs.com/ydmarinb/429756>),<span style="color:blue">_
+_[2] [**riptutorial.com**](<https://riptutorial.com/es/r/topic/5748/expresiones-regulares--expresiones-regulares->),<span style="color:blue">_
+
+Como primer punto, para tratar cualquier otra página referida a **"Expresiones Regulares"**, es menester dar una definición de dichas expresiones. 
+
+En comparación [1] no solo tiene una definición que no es muy distinta a la de [2], sino que hace referencia a la clausura de Kleene,  posiblemente con repeticiones, y concatenándolas entre sí. Con respecto a enriquecer la definición de las mismas, la página [1] lo hace mejor que la [2].
+
+Como segundo punto se considera el índice de contenidos que tiene cada página, siendo el de [1] más extensa y mejor presentada que [2], además es más cómoda y amigable a la vista del usuario, usando colores más básicos y contrastes definidos, mientras que la [2] usa mal la proporción de letras y la forma en la que cada punto desglosa cada tópico de expresiones regulares.
+
+Y como apartado final la URL del recurso [1] cuenta con una interfaz de consola para poder ingresar código en lenguaje R lo que permite al usuario practicar las expresiones regulares aprendidas en el contenido de la página, mientras que la página [2] no cuenta con esta valiosa herramienta. Es por estos motivos que considero la página [1] más útil que la página [2].
+
+## ANALIZANDO DOS RECURSOS DE R-MARKDONW
+
+La siguiente comparación tiene como objetivos las dos siguientes direcciones URL para aprendizaje y uso de la herramienta Markdown:
+
+_[A] [**markdown.es**](<https://markdown.es>),<span style="color:blue">_
+_[B] [**markdowntutorial.com**](<https://www.markdowntutorial.com>),<span style="color:blue">_
+
+A diferencia del punto anterior, el analisis reveló que será más útil indicar que la diferencia de ambos recursos no es cualitativa sino más subjetiva. Y es que la principal diferencia entre ambas es la forma en la que cada una te enseña Markdwon, siendo la [A] una manera más rudimentaria, leyendo texto y revisando imagenes como pautas de seguimiento y avanzar paulatinamente, mientras que la opción [B] nos muestra un mini tutorial interactivo de como utilizar de forma básica la herramienta mientras te quía a través de pestañas consecutivas.
+
+En conclusión, ambas herramientas se acomodan al tipo de modo que el usuario elija para aprender Markdown, ya sea una o la otra, esto nos lleva a pensar que ambas son adecuadas según las preferencias del usuario.
+
+## REVISANDO LOS DATOS
+
+El conjunto de datos que voy a desarrollar para propósitos académicos son los del videojuego **FIFA 19'** por considerarlo una fuente amplia de datos interesantes para los amantes del futbol y por mi afinidad a los videojuegos.
+
+La data corresponde a los datos estadísticos generales de todos los modelos animados de los jugadores que componen el universo de **FIFA 19'**, se puede apreciar que están ordenados por la variable "Overall" que expresa la cuantificación del nivel futbolístico del modelo del juegador, o una valoración basada en sus habilidades si se prefiere.
+
+```{r mi.fifa19, include=FALSE}
+
+fifa19<- read.csv("dat/Fifa19.csv", sep = ",", header = T)
+mi.fifa19<- fifa19[c(3,4,6,8,9,10,15,22,24,25,26)]
+colnames(mi.fifa19)[c(7,9,10,11)]<-c("Foot","Join","Loan","Until")
+mi.fifa19$Evol<- mi.fifa19$Potential - mi.fifa19$Overall
+head(mi.fifa19)
+```
+## GRAFICA DE NUMERO DE PROMESAS POR PAISES
+
+Buscando formas de que los datos nos arrojen información que podría ser valiosa bajo circunstancias adecuadas, para fines de representación de datos dinámicos se uso la librería "plotly" 
+
+Utilizando los filtros adecuados podriamos conocer cual son los países que tienen más promesas (jugadores jóvenes menores de 23 años y con una proyección elevada).
+
+```{r 1, echo=FALSE, message=FALSE}
+promesas<- head(mi.fifa19[mi.fifa19$Age <= 23, ],50)
+promesas_pais<- head(ddply(promesas, .(Nationality), summarize, total = length(Nationality)),20)
+colnames(promesas_pais)[c(1,2)]<- c("Nac.","Nro_prom")
+prom_pais<- plot_ly(data = promesas_pais, x = promesas_pais$Nac., y = promesas_pais$Nro_prom, 
+                    name = promesas_pais$Nac., span = 30)
+prom_pais
+
+```
+
+
+## GRAFICA DE TOP 20 CLUBS
+
+La siguiente tabla de barras muestra el top-20 de clubes en este juego cuya valoración colectiva por plantilla muestra el promedio de cada equipo y por ende su presencia o no en este top. Como se puede observar esta peculiaridad en los datos muestra a equipos de muy buen presente (ej: Barcelona FC), incluso por debajo de otros (ej: AC Milan).
+
+Esto puede entenderse que pese a que el primero tenga mejor presente deportivo en la realidad, no tiene tan buena valrción en miembros de semilleros que también son considerados en los promedios por Overall, mientras que el segundo si, como se viene atestiguando con respecto a los precios de mercado de los jugadores más jóvenes del AC Milan en comparación del Barcelona FC. Cuanto menos interesante la presentación de datos.
+
+```{r pressure, echo=FALSE}
+clubs<- mi.fifa19[c(6,4)]
+clubs<-ddply(clubs, .(Club), 
+      summarize, Ov.mean = mean(Overall))
+
+clubs<-head(clubs[order(-clubs$Ov.mean), ],20)
+par(mar = c(3, 4, 0, 2) + 0.1)
+mi.color <- c("#ECECEC", "#FBFBFB", "#FBA234")
+barras.como.fondo<- rep(100, 20)
+bp <- barplot(barras.como.fondo, horiz = T,
+              space = 0, col = mi.color[1:2],
+              border = NA, axes = FALSE)
+origen.barras<- 50
+fc<- (100 - origen.barras)/100
+barplot(rev(fc*clubs$Ov.mean), horiz = TRUE, border = "white",
+        col = "green", add = TRUE, space = 0, offset = origen.barras)
+
+pos<- paste(1:20, ". ", sep = "")
+
+for(i in 1:20){
+  text(5, bp[21-i], clubs$Club[i], pos = 4)
+}
+for(i in 1:20){
+  text(origen.barras, bp[21-i], clubs$Ov.mean[i], pos = 4)
+}
+for(i in 1:20){
+  text(0, bp[21-i], pos[i], pos = 4, font = 2)
+}
+text(0, bp[20] + 1, "Club Rank",
+     pos = 4, font = 2, cex = 0.8)
+
+text(origen.barras, bp[20] + 1, "Mean Overall per Club",
+     pos = 4, font = 2, cex = 0.8)
+
+par(mar = c(5, 4, 4, 2) + 0.1)
+
+
+```
